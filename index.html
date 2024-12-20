@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Random Stick Figures Walking</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #f0f0f0;
+        }
+
+        canvas {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        const ground = canvas.height - 150; // Raise the ground by 150 pixels
+        const stickFigureWidth = 20;
+        const numFigures = 69; // Number of stick figures
+
+        // Skin tones (realistic colors)
+        const skinTones = [
+            "#FAD02E", // Light skin tone
+            "#F6DC81", // Fair skin tone
+            "#C97F6A", // Medium skin tone
+            "#6D3F32", // Dark skin tone
+            "#7E4A3E"  // Brown skin tone
+        ];
+
+        // Generate random stick figures
+        const figures = [];
+        for (let i = 0; i < numFigures; i++) {
+            const height = Math.random() * 30 + 90; // Random height between 90 and 120
+            figures.push({
+                positionX: Math.random() * canvas.width, // Random initial position
+                legAngle: Math.random() * Math.PI, // Random initial leg angle
+                armAngle: Math.random() * Math.PI, // Random initial arm angle
+                speed: Math.random() * 1.5 + 0.5, // Slower speed between 0.5 and 2
+                direction: Math.random() < 0.5 ? 1 : -1, // Random direction (left or right)
+                skinColor: skinTones[Math.floor(Math.random() * skinTones.length)], // Random skin color
+                lifetime: Math.random() * 15000 + 5000, // Random lifetime between 5000 and 20000 ms (5 to 20 seconds)
+                timeAlive: 0, // Time since the figure appeared
+                alpha: 1, // Initial opacity (fully visible)
+                height: height // Assign random height to each figure
+            });
+        }
+
+        function drawStickFigure(x, y, legAngle, armAngle, skinColor, alpha, height) {
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 3;
+
+            // Set the alpha (transparency) for the figure
+            ctx.globalAlpha = alpha;
+
+            // Body (using black or a random color for variation)
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            ctx.lineTo(x, y - height); // Use dynamic height
+            ctx.stroke();
+
+            // Head (with random skin color)
+            const headRadius = 18; // Head radius set to 18 for a more balanced size
+            ctx.beginPath();
+            ctx.arc(x, y - height - 20, headRadius, 0, Math.PI * 2);
+            ctx.fillStyle = skinColor;
+            ctx.fill();
+            ctx.stroke();
+
+            // Arms (moving with armAngle, moved higher)
+            ctx.beginPath();
+            const armLength = height * 0.4;
+            const armSwingRange = 15;  // Reduced swing range
+
+            // Left arm moves opposite of right leg
+            const leftArmOffset = Math.sin(armAngle + Math.PI) * armSwingRange;
+            ctx.moveTo(x, y - height + 30); // Higher position for arms
+            ctx.lineTo(x + armLength + leftArmOffset, y - height + 50);
+
+            // Right arm moves opposite of left leg
+            const rightArmOffset = Math.sin(armAngle) * armSwingRange;
+            ctx.moveTo(x, y - height + 30); // Higher position for arms
+            ctx.lineTo(x - armLength + rightArmOffset, y - height + 50);
+            ctx.stroke();
+
+            // Legs (moving with legAngle)
+            ctx.beginPath();
+            const legLength = height * 0.5;
+            const legOffset = Math.sin(legAngle) * 20;
+
+            // Left leg moves opposite of right arm
+            ctx.moveTo(x, y);
+            ctx.lineTo(x - 15 + legOffset, y + legLength);
+
+            // Right leg moves opposite of left arm
+            ctx.moveTo(x, y);
+            ctx.lineTo(x + 15 - legOffset, y + legLength);
+            ctx.stroke();
+
+            // Reset the alpha back to 1 for other objects in the canvas
+            ctx.globalAlpha = 1;
+        }
+
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw ground
+            ctx.fillStyle = '#888';
+            ctx.fillRect(0, ground, canvas.width, 10);
+
+            // Update each figure's position and angle
+            figures.forEach(figure => {
+                figure.positionX += figure.speed * figure.direction; // Move position by speed and direction
+
+                // Change direction if the figure goes off-screen
+                if (figure.positionX > canvas.width + stickFigureWidth || figure.positionX < -stickFigureWidth) {
+                    figure.direction *= -1; // Change direction (left or right)
+                }
+
+                // Update walking angles
+                figure.legAngle += 0.15; // Increment leg angle for walking
+                figure.armAngle += 0.1; // Increment arm angle for swinging arms
+
+                // Increase timeAlive
+                figure.timeAlive += 16; // Roughly 60 FPS -> about 16ms per frame
+
+                // Handle fading
+                const fadeDuration = figure.lifetime * 0.2; // 20% of lifetime is for fading out
+                if (figure.timeAlive < fadeDuration) {
+                    // Fade in during the first 20% of lifetime
+                    figure.alpha = figure.timeAlive / fadeDuration;
+                } else if (figure.timeAlive > figure.lifetime - fadeDuration) {
+                    // Fade out during the last 20% of lifetime
+                    figure.alpha = (figure.lifetime - figure.timeAlive) / fadeDuration;
+                }
+
+                // Remove figure if lifetime expires
+                if (figure.timeAlive > figure.lifetime) {
+                    // Reset figure with a new position and lifetime
+                    figure.positionX = Math.random() * canvas.width;
+                    figure.timeAlive = 0;
+                    figure.lifetime = Math.random() * 15000 + 5000; // New lifetime between 5000 and 20000 ms
+                    figure.height = Math.random() * 30 + 90; // New random height between 90 and 120
+                }
+
+                // Draw stick figure with smooth fading and variable height
+                drawStickFigure(figure.positionX, ground - 10, figure.legAngle, figure.armAngle, figure.skinColor, figure.alpha, figure.height);
+            });
+
+            requestAnimationFrame(animate);
+        }
+
+        animate();
+    </script>
+</body>
+</html>
